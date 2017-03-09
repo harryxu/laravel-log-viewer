@@ -78,6 +78,23 @@ class LaravelLogViewer
         return basename(self::$file);
     }
 
+    public static function raw()
+    {
+        if (!self::$file) {
+            $log_file = self::getFiles();
+            if(!count($log_file)) {
+                return [];
+            }
+            self::$file = $log_file[0];
+        }
+
+        if (app('files')->size(self::$file) > self::MAX_FILE_SIZE) return null;
+
+        $file = app('files')->get(self::$file);
+
+        return $file;
+    }
+
     /**
      * @return array
      */

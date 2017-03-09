@@ -30,10 +30,10 @@ class LogViewerController extends BaseController
             return $this->redirect($this->request->url());
         }
 
-        $logs = LaravelLogViewer::all();
+        $rawLog = LaravelLogViewer::raw();
 
         return app('view')->make('laravel-log-viewer::log', [
-            'logs' => $logs,
+            'rawlog' => $rawLog,
             'files' => LaravelLogViewer::getFiles(true),
             'current_file' => LaravelLogViewer::getFileName()
         ]);

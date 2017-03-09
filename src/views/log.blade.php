@@ -8,20 +8,21 @@
 
     <!-- Bootstrap -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/plug-ins/9dcbecd42ad/integration/bootstrap/3/dataTables.bootstrap.css">
+    <link href="//cdn.bootcss.com/codemirror/5.24.2/codemirror.min.css" rel="stylesheet">
 
-
-
-    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
-    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
-    <!--[if lt IE 9]>
-      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
-      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
-    <![endif]-->
     <style>
-      body {
-        padding: 25px;
+      .table-container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
+
+      .log-content {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
       h1 {
         font-size: 1.5em;
         margin-top: 0px;
@@ -40,6 +41,7 @@
         background-color: #f5f5f5;
         border-color: #777;
       }
+
     </style>
   </head>
   <body>
@@ -57,68 +59,74 @@
           </div>
         </div>
         <div class="col-sm-9 col-md-10 table-container">
-          @if ($logs === null)
+          @if ($rawlog === null)
             <div>
               Log file >50M, please download it.
             </div>
           @else
-          <table id="table-log" class="table table-striped">
-            <thead>
-              <tr>
-                <th>Level</th>
-                <th>Context</th>
-                <th>Date</th>
-                <th>Content</th>
-              </tr>
-            </thead>
-            <tbody>
+            <div id="log-content" class="log-content">
 
-@foreach($logs as $key => $log)
-<tr>
-  <td class="text-{{{$log['level_class']}}}"><span class="glyphicon glyphicon-{{{$log['level_img']}}}-sign" aria-hidden="true"></span> &nbsp;{{$log['level']}}</td>
-  <td class="text">{{$log['context']}}</td>
-  <td class="date">{{{$log['date']}}}</td>
-  <td class="text">
-    @if ($log['stack']) <a class="pull-right expand btn btn-default btn-xs" data-display="stack{{{$key}}}"><span class="glyphicon glyphicon-search"></span></a>@endif
-    {{{$log['text']}}}
-    @if (isset($log['in_file'])) <br />{{{$log['in_file']}}}@endif
-    @if ($log['stack']) <div class="stack" id="stack{{{$key}}}" style="display: none; white-space: pre-wrap;">{{{ trim($log['stack']) }}}</div>@endif
-  </td>
-</tr>
-@endforeach
-
-            </tbody>
-          </table>
+            </div>
           @endif
           <div>
             <a href="?dl={{ base64_encode($current_file) }}"><span class="glyphicon glyphicon-download-alt"></span> Download file</a>
             -
             <a id="delete-log" href="?del={{ base64_encode($current_file) }}"><span class="glyphicon glyphicon-trash"></span> Delete file</a>
+
+            -
+
+            <label><input type="checkbox" id="line-wrap" /> wrap</label>
+
+            -
+
+            <button type="button" id="btn-to-bottom">bottom</button>
+            <button type="button" id="btn-to-top">top</button>
           </div>
         </div>
       </div>
     </div>
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-    <script src="https://cdn.datatables.net/1.10.4/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdn.datatables.net/plug-ins/9dcbecd42ad/integration/bootstrap/3/dataTables.bootstrap.js"></script>
+    <script src="//cdn.bootcss.com/codemirror/5.24.2/codemirror.min.js"></script>
     <script>
+      var cm = null
+
+      function resizeEditor() {
+        var h = $('#log-content').height();
+        cm.setSize('100%', h);
+      }
+
       $(document).ready(function(){
-        $('#table-log').DataTable({
-          "order": [ 1, 'desc' ],
-          "stateSave": true,
-          "stateSaveCallback": function (settings, data) {
-            window.localStorage.setItem("datatable", JSON.stringify(data));
-          },
-          "stateLoadCallback": function (settings) {
-            var data = JSON.parse(window.localStorage.getItem("datatable"));
-            if (data) data.start = 0;
-            return data;
-          }
+
+        var rawlog = {!! json_encode($rawlog) !!};
+
+        cm = CodeMirror($('#log-content').get(0), {
+          value: rawlog,
+          lineNumbers: true,
+          lineWrapping: false,
+          readOnly: true
         });
-        $('.table-container').on('click', '.expand', function(){
-          $('#' + $(this).data('display')).toggle();
+
+        cm.scrollIntoView({line: cm.lineCount()-1});
+
+        $('#btn-to-bottom').click(function() {
+          cm.scrollIntoView({line: cm.lineCount()-1});
         });
+        $('#btn-to-top').click(function() {
+          cm.scrollIntoView({line: 0});
+        });
+
+        resizeEditor();
+
+        $(window).on('resize', function() {
+          resizeEditor();
+        });
+
+        $('#line-wrap').change(function() {
+          var lineWrap = $(this).is(':checked');
+          cm.setOption('lineWrapping', lineWrap);
+        });
+
         $('#delete-log').click(function(){
           return confirm('Are you sure?');
         });
